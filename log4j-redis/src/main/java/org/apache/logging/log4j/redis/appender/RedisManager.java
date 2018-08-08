@@ -18,9 +18,10 @@ class RedisManager extends AbstractManager {
     private final String host;
     private final int port;
     private final Charset charset;
+    private final boolean ssl;
     private JedisPool jedisPool;
 
-    RedisManager(LoggerContext loggerContext, String name, String[] keys, String host, int port, Charset charset) {
+    RedisManager(LoggerContext loggerContext, String name, String[] keys, String host, int port, boolean ssl, Charset charset) {
         super(loggerContext, name);
         this.byteKeys = new byte[keys.length][];
         for (int i = 0; i < keys.length; i++) {
@@ -29,6 +30,7 @@ class RedisManager extends AbstractManager {
         this.charset = charset;
         this.host = host;
         this.port = port;
+        this.ssl = ssl;
     }
 
     JedisPool createPool(String host, int port, boolean ssl) {
@@ -44,33 +46,16 @@ class RedisManager extends AbstractManager {
     }
 
     public void startup() {
-        jedisPool = createPool(host, port, false);
+        jedisPool = createPool(host, port, ssl);
     }
 
     public void send(byte[] value) {
-        runInPool(jedis -> {
+        try (Jedis jedis = jedisPool.getResource()){
             for (byte[] key: byteKeys) {
                 jedis.rpush(key, value);
             }
-            return null;
-        }, ex -> {
-            LOGGER.error("Unable to send audit log message to ddd. Ensure that it's running on {} : {}", host, port, ex);
-            return null;
-        });
-    }
-
-    <T> Optional<T> runInPool(Function<Jedis, T> sendFunction, Function<Exception, Void> onError) {
-        Jedis jedis = null;
-        try {
-            jedis = jedisPool.getResource();
-            return Optional.ofNullable(sendFunction.apply(jedis));
         } catch (JedisConnectionException e) {
-            onError.apply(e);
-            return Optional.empty();
-        } finally {
-            if (jedis != null) {
-                jedis.resetState();
-            }
+            LOGGER.error("Unable to connect to redis. Please ensure that it's running on {}:{}", host, port, e);
         }
     }
 

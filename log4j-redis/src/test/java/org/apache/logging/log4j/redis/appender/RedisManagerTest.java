@@ -57,7 +57,7 @@ public class RedisManagerTest {
     private class TestRedisManager extends RedisManager {
 
         TestRedisManager(LoggerContext loggerContext, String name, String[] keys, String host, int port, Charset charset) {
-            super(loggerContext, name, keys, host, port, charset);
+            super(loggerContext, name, keys, host, port, false, charset);
         }
 
         @Override

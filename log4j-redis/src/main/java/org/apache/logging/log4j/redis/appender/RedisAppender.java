@@ -65,8 +65,8 @@ public final class RedisAppender extends AbstractAppender {
         @PluginAttribute(value = "port")
         private int port;
 
-        @PluginElement("Properties")
-        private Property[] properties;
+        @PluginAttribute(value = "ssl")
+        private boolean ssl = false;
 
         @SuppressWarnings("resource")
         @Override
@@ -90,12 +90,12 @@ public final class RedisAppender extends AbstractAppender {
             return host;
         }
 
-        int getPort() {
-            return port;
+        boolean getSsl() {
+            return ssl;
         }
 
-        public Property[] getProperties() {
-            return properties;
+        int getPort() {
+            return port;
         }
 
         public B withKeys(final String key) {
@@ -118,8 +118,8 @@ public final class RedisAppender extends AbstractAppender {
             return asBuilder();
         }
 
-        public B withProperties(final Property[] properties) {
-            this.properties = properties;
+        public B withSsl(final boolean ssl) {
+            this.ssl = ssl;
             return asBuilder();
         }
 
@@ -130,6 +130,7 @@ public final class RedisAppender extends AbstractAppender {
                     getKeys(),
                     getHost(),
                     getPort(),
+                    getSsl(),
                     getCharset()
             );
         }
