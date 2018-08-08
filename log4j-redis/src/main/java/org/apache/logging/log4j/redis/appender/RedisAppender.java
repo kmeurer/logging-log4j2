@@ -17,20 +17,11 @@
 
 package org.apache.logging.log4j.redis.appender;
 
-import java.io.Serializable;
-import java.nio.charset.Charset;
-import java.util.Objects;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
-import org.apache.logging.log4j.core.AbstractLifeCycle;
 import org.apache.logging.log4j.core.Appender;
 import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.Layout;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.appender.AbstractAppender;
-import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.Node;
 import org.apache.logging.log4j.core.config.Property;
 import org.apache.logging.log4j.core.config.plugins.Plugin;
@@ -39,8 +30,11 @@ import org.apache.logging.log4j.core.config.plugins.PluginBuilderFactory;
 import org.apache.logging.log4j.core.config.plugins.PluginElement;
 import org.apache.logging.log4j.core.config.plugins.validation.constraints.Required;
 import org.apache.logging.log4j.core.layout.AbstractStringLayout;
-import org.apache.logging.log4j.core.layout.SerializedLayout;
-import redis.clients.jedis.Jedis;
+
+import java.io.Serializable;
+import java.nio.charset.Charset;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Sends log events to a Redis Queue. All logs are appended Redis lists via the RPUSH command.
@@ -77,18 +71,10 @@ public final class RedisAppender extends AbstractAppender {
         @SuppressWarnings("resource")
         @Override
         public RedisAppender build() {
-            RedisManager redisManager = new RedisManager(
-                    getConfiguration().getLoggerContext(),
-                    getName(),
-                    getKeys(),
-                    getHost(),
-                    getPort(),
-                    getCharset()
-            );
-            return new RedisAppender(getName(), getLayout(), getFilter(), isIgnoreExceptions(), redisManager);
+            return new RedisAppender(getName(), getLayout(), getFilter(), isIgnoreExceptions(), getRedisManager());
         }
 
-        private Charset getCharset() {
+        public Charset getCharset() {
             if (getLayout() instanceof AbstractStringLayout) {
                 return ((AbstractStringLayout) getLayout()).getCharset();
             } else {
@@ -96,15 +82,15 @@ public final class RedisAppender extends AbstractAppender {
             }
         }
 
-        public String[] getKeys() {
+        String[] getKeys() {
             return keys;
         }
 
-        public String getHost() {
+        String getHost() {
             return host;
         }
 
-        public int getPort() {
+        int getPort() {
             return port;
         }
 
@@ -112,29 +98,40 @@ public final class RedisAppender extends AbstractAppender {
             return properties;
         }
 
-        public B setKeys(final String key) {
+        public B withKeys(final String key) {
             this.keys = new String[]{key};
             return asBuilder();
         }
 
-        public B setKeys(final String[] keys) {
+        public B withKeys(final String[] keys) {
             this.keys = keys;
             return asBuilder();
         }
 
-        public B setHost(final String host) {
+        public B withHost(final String host) {
             this.host = host;
             return asBuilder();
         }
 
-        public B setPort(final int port) {
+        public B withPort(final int port) {
             this.port = port;
             return asBuilder();
         }
 
-        public B setProperties(final Property[] properties) {
+        public B withProperties(final Property[] properties) {
             this.properties = properties;
             return asBuilder();
+        }
+
+        RedisManager getRedisManager() {
+            return new RedisManager(
+                    getConfiguration().getLoggerContext(),
+                    getName(),
+                    getKeys(),
+                    getHost(),
+                    getPort(),
+                    getCharset()
+            );
         }
     }
 
@@ -162,19 +159,18 @@ public final class RedisAppender extends AbstractAppender {
         }
     }
 
-    private void tryAppend(final LogEvent event) throws ExecutionException, InterruptedException, TimeoutException {
+    private void tryAppend(final LogEvent event) {
         final Layout<? extends Serializable> layout = getLayout();
-        byte[] data;
-        if (getLayout() instanceof AbstractStringLayout) {
-            final byte[] header = layout.getHeader();
-            final byte[] body = layout.toByteArray(event);
-            final byte[] footer = layout.getFooter();
-            data = new byte[header.length + body.length + footer.length];
+        final byte[] header = layout.getHeader();
+        final byte[] body = layout.toByteArray(event);
+
+        int len = (header != null ? header.length : 0) + body.length;
+        byte[] data = new byte[len];
+        if (header != null) {
             System.arraycopy(header, 0, data, 0, header.length);
             System.arraycopy(body, 0, data, header.length, body.length);
-            System.arraycopy(footer, 0, data, header.length + body.length, footer.length);
         } else {
-            data = layout.toByteArray(event);
+            System.arraycopy(body, 0, data, 0, body.length);
         }
         manager.send(data);
     }
