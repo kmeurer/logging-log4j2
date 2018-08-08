@@ -20,8 +20,6 @@
 
 ## Requirements
 
-This module was introduced in Log4j 2.11.0 and requires the Redis client JAR.
-
 Some features may require optional
 [dependencies](../runtime-dependencies.html). These dependencies are specified in the
 documentation for those features.

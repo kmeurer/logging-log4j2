@@ -6,7 +6,6 @@ package org.apache.logging.log4j.redis.appender;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.LifeCycle;
-import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.impl.Log4jLogEvent;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.apache.logging.log4j.message.SimpleMessage;
